@@ -1,0 +1,262 @@
+# %% [code]
+import pandas as pd
+import numpy as np
+import random as rnd
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC, LinearSVC
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.linear_model import Perceptron
+from sklearn.linear_model import SGDClassifier
+from sklearn.tree import DecisionTreeClassifier
+
+
+
+import os
+for dirname, _, filenames in os.walk('/kaggle/input'):
+    for filename in filenames:
+        print(os.path.join(dirname, filename))
+
+
+# %% [code]
+# Add leaked dataset
+sub_leak=pd.read_csv('/kaggle/input/titanic-leaked/titanic.csv')
+
+sub_leak.to_csv('submission_leak.csv', index=False)
+sub_leak.head()
+
+# %% [code]
+train_data = pd.read_csv("/kaggle/input/titanic/train.csv")
+test_data = pd.read_csv("/kaggle/input/titanic/test.csv")
+
+# %% [code]
+train_data = pd.read_csv('/kaggle/input/titanic/train.csv')
+test_data = pd.read_csv('/kaggle/input/titanic/test.csv')
+combine = [train_data, test_data]
+combine
+
+# %% [code]
+women = train_data.loc[train_data.Sex == 'female']["Survived"]
+rate_women = sum(women)/len(women)
+print(rate_women)
+men = train_data.loc[train_data.Sex == 'male']["Survived"]
+rate_men = sum(men)/len(men)
+print(rate_men)
+
+# %% [code]
+train_data.describe()
+
+# %% [code]
+train_data[["Sex", "Survived"]].groupby(['Sex'], as_index=False).mean().sort_values(by='Survived', ascending=False)
+
+# %% [code]
+viz = sns.FacetGrid(train_data, col='Survived')
+viz.map(plt.hist, 'Age', bins=20)
+
+# %% [code]
+# Analyze and count Survived passenger by 'Class', 'Age' and etc (full the empty by avrage)
+
+# %% [code]
+# train_data[['Pclass', 'Survived']].groupby(['Pclass'], as_index=False).mean().sort_values(by='Survived', ascending=False)
+# train_data[["Parch", "Survived"]].groupby(['Parch'], as_index=False).mean().sort_values(by='Survived', ascending=False)
+# train_data[["Sex", "Survived"]].groupby(['Sex'], as_index=False).mean().sort_values(by='Survived', ascending=False)
+# train_data[["SibSp", "Survived"]].groupby(['SibSp'], as_index=False).mean().sort_values(by='Survived', ascending=False)
+
+# sns.barplot(x=train_data.index, y=train_data['Age'])
+
+# %% [code]
+grid = sns.FacetGrid(train_data, col='Survived', row='Pclass', size=2, aspect=1)
+grid.map(plt.hist, 'Age', alpha=.5, bins=20)
+grid.add_legend();
+
+# %% [code]
+grid = sns.FacetGrid(train_data, row='Embarked', size=2.2, aspect=1.6)
+grid.map(sns.pointplot, 'Pclass', 'Survived', 'Sex', palette='deep')
+grid.add_legend()
+
+# %% [code]
+grid = sns.FacetGrid(train_data, row='Embarked', col='Survived', size=2.2, aspect=1.6)
+grid.map(sns.barplot, 'Sex', 'Fare', alpha=.5, ci=None)
+grid.add_legend()
+
+# %% [code]
+print("Before", train_data.shape, test_data.shape, combine[0].shape, combine[1].shape)
+
+train_data = train_data.drop(['Ticket', 'Cabin'], axis=1)
+test_data = test_data.drop(['Ticket', 'Cabin'], axis=1)
+combine = [train_data, test_data]
+
+"After", train_data.shape, test_data.shape, combine[0].shape, combine[1].shape
+
+# %% [code]
+# Add new title to feature 
+
+# %% [code]
+for dataset in combine:
+    dataset['Title'] = dataset.Name.str.extract(' ([A-Za-z]+)\.', expand=False)
+
+pd.crosstab(train_data['Title'], train_data['Sex'])
+
+# %% [code]
+# Convert the categorical titles to ordinal.
+
+# %% [code]
+for dataset in combine:
+    dataset['Title'] = dataset['Title'].replace(['Lady', 'Countess','Capt', 'Col',\
+ 	'Don', 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer', 'Dona', 'Mme', 'Mlle', 'Ms', 'Miss', 'Mrs'], 'W-gender')
+
+#     dataset['Title'] = dataset['Title'].replace('Mlle', 'Miss')
+#     dataset['Title'] = dataset['Title'].replace('Ms', 'Miss')
+#     dataset['Title'] = dataset['Title'].replace('Mme', 'Mrs')
+    
+train_data[['Title', 'Survived']].groupby(['Title'], as_index=False).mean()
+
+# %% [code]
+title_mapping = {"Mr": 1, "W-gender": 2, "Master": 3}
+for dataset in combine:
+    dataset['Title'] = dataset['Title'].map(title_mapping)
+    dataset['Title'] = dataset['Title'].fillna(0)
+
+train_data.head()
+
+# %% [code]
+train_data = train_data.drop(['Name', 'PassengerId'], axis=1)
+test_data = test_data.drop(['Name'], axis=1)
+combine = [train_data, test_data]
+train_data.shape, test_data.shape
+
+# %% [code]
+for dataset in combine:
+    dataset['Sex'] = dataset['Sex'].map( {'female': 1, 'male': 0} ).astype(int)
+
+train_data.head()
+
+# %% [code]
+train_data['AgeBand'] = pd.cut(train_df['Age'], 5)
+train_data[['AgeBand', 'Survived']].groupby(['AgeBand'], as_index=False).mean().sort_values(by='AgeBand', ascending=True)
+
+# %% [code]
+for dataset in combine:    
+    dataset.loc[ dataset['Age'] <= 16, 'Age'] = 0
+    dataset.loc[(dataset['Age'] > 16) & (dataset['Age'] <= 32), 'Age'] = 1
+    dataset.loc[(dataset['Age'] > 32) & (dataset['Age'] <= 48), 'Age'] = 2
+    dataset.loc[(dataset['Age'] > 48) & (dataset['Age'] <= 64), 'Age'] = 3
+    dataset.loc[ dataset['Age'] > 64, 'Age']
+train_data.head()
+
+# %% [code]
+train_data = train_data.drop(['AgeBand'], axis=1)
+combine = [train_data, test_data]
+train_data.head()
+
+# %% [code]
+# Create Family for combile SibSp and Parch
+
+# %% [code]
+for dataset in combine:
+    dataset['Family'] = dataset['SibSp'] + dataset['Parch'] + 1
+
+train_data[['Family', 'Survived']].groupby(['Family'], as_index=False).mean().sort_values(by='Survived', ascending=False)
+
+# %% [code]
+for dataset in combine:
+    dataset['Alone'] = 0
+    dataset.loc[dataset['Family'] == 1, 'Alone'] = 1
+
+train_data[['Alone', 'Survived']].groupby(['Alone'], as_index=False).mean()
+
+# %% [code]
+train_data = train_data.drop(['Parch', 'SibSp', 'Family'], axis=1)
+test_data = test_data.drop(['Parch', 'SibSp', 'Family'], axis=1)
+combine = [train_data, test_data]
+
+train_data.head()
+
+# %% [code]
+#test_data.isnull().sum(axis=1).tolist()
+
+test_data['Age'].fillna(test_data['Age'].dropna().median(), inplace=True)
+test_data.head()
+
+# %% [code]
+train_data['Age'].fillna(test_data['Age'].dropna().median(), inplace=True)
+train_data.head()
+
+# %% [code]
+#train_data.isnull().sum(axis=1).tolist()
+
+# %% [code]
+for dataset in combine:
+    dataset['Age*Class'] = dataset.Age * dataset.Pclass
+
+train_data.loc[:, ['Age*Class', 'Age', 'Pclass']].head(10)
+
+# %% [code]
+freq_port = train_data.Embarked.dropna().mode()[0]
+freq_port
+
+# %% [code]
+for dataset in combine:
+    dataset['Embarked'] = dataset['Embarked'].fillna(freq_port)
+    
+train_data[['Embarked', 'Survived']].groupby(['Embarked'], as_index=False).mean().sort_values(by='Survived', ascending=False)
+
+# %% [code]
+for dataset in combine:
+    dataset['Embarked'] = dataset['Embarked'].map( {'S': 0, 'C': 1, 'Q': 2} ).astype(int)
+
+train_data.head()
+
+# %% [code]
+test_data['Fare'].fillna(test_data['Fare'].dropna().median(), inplace=True)
+test_data.head()
+
+# %% [code]
+train_data['FareBand'] = pd.qcut(train_data['Fare'], 4)
+train_data[['FareBand', 'Survived']].groupby(['FareBand'], as_index=False).mean().sort_values(by='FareBand', ascending=True)
+
+# %% [code]
+for dataset in combine:
+    dataset.loc[ dataset['Fare'] <= 7.91, 'Fare'] = 0
+    dataset.loc[(dataset['Fare'] > 7.91) & (dataset['Fare'] <= 14.454), 'Fare'] = 1
+    dataset.loc[(dataset['Fare'] > 14.454) & (dataset['Fare'] <= 31), 'Fare']   = 2
+    dataset.loc[ dataset['Fare'] > 31, 'Fare'] = 3
+    dataset['Fare'] = dataset['Fare'].astype(int)
+
+train_data = train_data.drop(['FareBand'], axis=1)
+combine = [train_data, test_data]
+    
+train_data.head(10)
+
+# %% [code]
+test_data.head(10)
+
+# %% [code]
+# Start to modeling
+
+# %% [code]
+X_train = train_data.drop("Survived", axis=1)
+Y_train = train_data["Survived"]
+X_test  = test_data.drop("PassengerId", axis=1).copy()
+X_train.shape, Y_train.shape, X_test.shape
+
+# %% [code]
+# Random Forest
+
+random_forest = RandomForestClassifier(n_estimators=100)
+random_forest.fit(X_train, Y_train)
+Y_pred = random_forest.predict(X_test)
+random_forest.score(X_train, Y_train)
+acc_random_forest = round(random_forest.score(X_train, Y_train) * 100, 2)
+acc_random_forest
+
+# %% [code]
+output = pd.DataFrame({'PassengerId': test_data.PassengerId, 'Survived': Y_pred})
+output.to_csv('my_submission-3.csv', index=False)
+print("Your submission was successfully saved!")
